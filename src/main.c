@@ -1,6 +1,6 @@
 #include <stdbool.h>
 
-#define RAYGUI_IMPLEMENTATION
+//#define RAYGUI_IMPLEMENTATION
 #include "raylib.h"
 
 #include "globals.h"
@@ -10,7 +10,7 @@
 enum GME_DFC difficulty = DFC_MEDI;
 struct Board board = {0};
 
-int main(int argc, char **argc) {
+int main(int argc, char **argv) {
 	InitWindow(win_heigh, win_width, "Minesweeper");
 	SetTargetFPS(target_fps);
 
@@ -19,16 +19,19 @@ int main(int argc, char **argc) {
 
 	while (!WindowShouldClose()) {
 		BeginDrawing();
+			ClearBackground(WHITE);
+
 			BoardDraw(&board, GetFrameTime(), reload);
 			reload = false;
 
 			InterfaceDraw();
 		EndDrawing();
 
-		if (IsMouseButtonRelease(0)) {
+		if (IsMouseButtonReleased(0)) {
 			int mx = GetMouseX();
 			int my = GetMouseY();
-			if (!InterfaceInteract(mx, my)) BoardInteract(&board, mx, my);
+			InterfaceInteract(mx, my);
+			BoardInteract(&board, mx, my);
 		}
 	};
 

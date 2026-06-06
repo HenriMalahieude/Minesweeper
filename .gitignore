@@ -1,3 +1,6 @@
 *.out
 *.o
 *.gch
+minesweeper
+*.a
+

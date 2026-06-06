@@ -5,6 +5,6 @@
 
 void InterfaceDraw();
 
-bool InterfaceInteract(int mx, int my);
+void InterfaceInteract(int mx, int my);
 
 #endif

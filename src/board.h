@@ -4,7 +4,8 @@
 
 #define BOARD_MAX 32
 
-static const margin = 100;
+static const uint16_t board_size = 512; //in pixels, both sides
+static const uint16_t border = 5;
 
 enum SQR_TYP { //Square type in grid
 	SQR_VOID 		= -2,
