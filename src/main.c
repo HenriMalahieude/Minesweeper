@@ -1,6 +1,6 @@
 #include <stdbool.h>
 
-//#define RAYGUI_IMPLEMENTATION
+#define RAYGUI_IMPLEMENTATION
 #include "raylib.h"
 
 #include "globals.h"
@@ -27,12 +27,7 @@ int main(int argc, char **argv) {
 			InterfaceDraw();
 		EndDrawing();
 
-		if (IsMouseButtonReleased(0)) {
-			int mx = GetMouseX();
-			int my = GetMouseY();
-			InterfaceInteract(mx, my);
-			BoardInteract(&board, mx, my);
-		}
+		BoardInteract(&board);
 	};
 
 	return 0;

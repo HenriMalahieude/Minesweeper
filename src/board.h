@@ -4,8 +4,8 @@
 
 #define BOARD_MAX 32
 
-static const uint16_t board_size = 512; //in pixels, both sides
-static const uint16_t border = 5;
+static const uint16_t board_size = 600; //in pixels, both sides
+static const uint16_t border = 4;
 
 enum SQR_TYP { //Square type in grid
 	SQR_VOID 		= -2,
@@ -19,7 +19,8 @@ enum SQR_TYP { //Square type in grid
 	SQR_VI			= 6,
 	SQR_VII			= 7,
 	SQR_VIII		= 8,
-	SQR_MINE		= 9
+	SQR_MINE		= 9,
+	SQR_FLAG		= 10
 };
 
 enum GME_DFC { //Game Difficulty
@@ -30,9 +31,17 @@ enum GME_DFC { //Game Difficulty
 };
 #define DFC_AM 4
 
+enum BRD_ST {
+	ST_RUNNING	= 0,
+	ST_FAILED 	= 1,
+	ST_CLEAR 	= 2
+};
+
 struct Board {
 	//-1 = non-revealed, 0 = empty, 1-8 = number square, 9 = mine
-	enum SQR_TYP grid[BOARD_MAX][BOARD_MAX];
+	enum SQR_TYP  grid[BOARD_MAX][BOARD_MAX];
+	enum SQR_TYP rgrid[BOARD_MAX][BOARD_MAX]; //grid of revealed squares
+	enum BRD_ST state;
 	uint16_t square;
 };
 
@@ -42,6 +51,7 @@ static const uint16_t DifficultyMines[DFC_AM] = {
 	[DFC_HARD] = 200, //~40%
 	[DFC_IMPO] = 614  //~60%
 };
+
 static const uint16_t DifficultySquare[DFC_AM] = {
 	[DFC_EASY] = 10,
 	[DFC_MEDI] = 16,
@@ -51,9 +61,7 @@ static const uint16_t DifficultySquare[DFC_AM] = {
 
 //The Board, length of one side, amount of mines to spawn
 void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt);
-
 void BoardDraw(struct Board *board, float frametime, bool intro_sgn);
-
-void BoardInteract(struct Board *board, uint32_t mx, uint32_t my);
+void BoardInteract(struct Board *board);
 
 #endif

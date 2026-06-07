@@ -14,13 +14,21 @@ static const uint16_t target_fps = 60;
 	printf(fmt __VA_OPT__(,) __VA_ARGS__); \
 }
 
-#define LOG_ONCE(fmt, ...) { \
-	static bool out = false; \
-	if (!out) { \
-		out = true; \
+#define _CONCAT(A, B) A ## B
+#define CONCAT(A, B) _CONCAT(A,B)
+
+#define _LOG_ONCE(varn, fmt, ...) { \
+	static bool varn = false; \
+	if (!varn) { \
+		varn = true; \
 		LOG(fmt __VA_OPT__(,) __VA_ARGS__); \
 	}\
 }
+#define LOG_ONCE(fmt, ...) \
+	_LOG_ONCE(CONCAT(log_once_macro, __COUNTER__), fmt __VA_OPT__(,) __VA_ARGS__)
 
+
+#define max(a, b) (a > b) ? a : b
+#define min(a, b) (a < b) ? a : b
 
 #endif
