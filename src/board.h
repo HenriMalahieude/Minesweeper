@@ -2,7 +2,7 @@
 #define __BOARD_H__
 #include <stdint.h>
 
-#define BOARD_MAX 32
+#define BOARD_MAX 25
 
 static const uint16_t board_size = 600; //in pixels, both sides
 static const uint16_t border = 4;
@@ -43,20 +43,21 @@ struct Board {
 	enum SQR_TYP rgrid[BOARD_MAX][BOARD_MAX]; //grid of revealed squares
 	enum BRD_ST state;
 	uint16_t square;
+	uint16_t flags;
 };
 
 static const uint16_t DifficultyMines[DFC_AM] = {
 	[DFC_EASY] = 10,  //~10%
-	[DFC_MEDI] = 64,  //~25%
-	[DFC_HARD] = 200, //~40%
-	[DFC_IMPO] = 614  //~60%
+	[DFC_MEDI] = 50,  //~25%
+	[DFC_HARD] = 100, //~40%
+	[DFC_IMPO] = 500  //~60%
 };
 
 static const uint16_t DifficultySquare[DFC_AM] = {
 	[DFC_EASY] = 10,
-	[DFC_MEDI] = 16,
-	[DFC_HARD] = 24,
-	[DFC_IMPO] = 32
+	[DFC_MEDI] = 12,
+	[DFC_HARD] = 25,
+	[DFC_IMPO] = 25
 };
 
 //The Board, length of one side, amount of mines to spawn

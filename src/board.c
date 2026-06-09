@@ -6,18 +6,31 @@
 
 const uint16_t margin = (win_width - board_size) / 2.f;
 
-const float intro_max = 2.0f;
+const float intro_max = 0.5f;
 float intro_time = 0.0f;
+
+Vector2 kernel[8] = {
+	{-1,  0}, //mid-left
+	{-1,  1}, //top-left
+	{-1, -1}, //bot-left
+	{ 1,  0}, //mid-right
+	{ 1,  1}, //top-right
+	{ 1, -1}, //bot-right
+	{ 0, -1}, //str-up
+	{ 0,  1}  //str-down
+};
 
 void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt) {
 	board->square = square;
 	board->state = ST_RUNNING;
 
+	//Reset
 	for (size_t x = 0; x < BOARD_MAX; x++) {
 		for (size_t y = 0; y < BOARD_MAX; y++) {
-			if (x > square || y > square) {
+			if (x >= square || y >= square) {
 				board->grid[x][y] = SQR_VOID;
-				board->rgrid[x][y] = SQR_VOID;
+				board->rgrid[x][y] = SQR_UNREVEALED;
+				continue;
 			}
 
 			board->grid[x][y] = SQR_EMPTY;
@@ -25,7 +38,25 @@ void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt) {
 		}
 	}
 
-	LOG_ONCE("TODO\n");
+	//Place Mines, and Add Numbers
+	for (int i = 0; i < mine_cnt; i++) {
+		int x = GetRandomValue(0, square-1);
+		int y = GetRandomValue(0, square-1);
+		if (board->grid[x][y] == SQR_MINE) { //retry
+			i -= 1;
+			continue;
+		}
+
+		board->grid[x][y] = SQR_MINE;
+		for (int j = 0; j < 8; j++) {
+			Vector2 nloc = {x + kernel[j].x, y + kernel[j].y};
+			if (nloc.x < 0 || nloc.x >= square || nloc.y < 0 || nloc.y >= square) continue;
+
+			if (board->grid[(int)nloc.x][(int)nloc.y] != SQR_MINE) {
+				board->grid[(int)nloc.x][(int)nloc.y] += 1;
+			}
+		}
+	}
 }
 
 void SquareDraw(struct Board *board, enum SQR_TYP type, uint16_t px, uint16_t py, uint16_t sz) {
@@ -61,7 +92,7 @@ void SquareDraw(struct Board *board, enum SQR_TYP type, uint16_t px, uint16_t py
 
 		case SQR_IV:
 			DrawRectangle(px+border, py+border, sz-border, sz-border, revealed);
-			DrawText("4", px+border+txt_sz/4, py+border, txt_sz, DARKPURPLE);
+			DrawText("4", px+border+txt_sz/4, py+border, txt_sz, PURPLE);
 			break;
 
 		case SQR_V:
@@ -147,9 +178,76 @@ void BoardDraw(struct Board *board, float frametime, bool intro_sgn) {
 			uint16_t ry = y * (square_size) + margin;
 
 			enum SQR_TYP type = board->rgrid[x][y];
+			//if (type != SQR_UNREVEALED) LOG_ONCE("Bruh? %d %d\n", x, y);
 			if (type == SQR_VOID) type = board->grid[x][y];
 
 			SquareDraw(board, type, rx, ry, square_size);
+		}
+	}
+}
+
+//When they left click on empty
+void CascadeReveal(struct Board *board, int x, int y) {
+	Vector2 unchecked[4*BOARD_MAX];
+	int queue_pos = 0;
+
+	unchecked[queue_pos++] = (Vector2){x, y};
+
+	while (queue_pos > 0) {
+		Vector2 local_queue[4*BOARD_MAX];
+		int local_queue_pos = 0;
+
+		for (int i = 0; i < queue_pos; i++) { //Breadth-first search
+			Vector2 *cur = unchecked + i;
+			int cx = (int)cur->x;
+			int cy = (int)cur->y;
+			if (board->rgrid[cx][cy] != SQR_VOID) {
+				if (board->grid[cx][cy] != SQR_MINE) {
+					board->rgrid[cx][cy] = SQR_VOID; //reveal it
+				}
+
+				if (board->grid[cx][cy] == SQR_EMPTY) {
+					for (int j = 0; j < 8; j++) {
+						Vector2 nloc = {cx + kernel[j].x, cy + kernel[j].y};
+						if (nloc.x < 0 || nloc.x >= BOARD_MAX || nloc.y < 0 || nloc.y >= BOARD_MAX
+								|| nloc.x > board->square || nloc.y > board->square) {
+							continue;
+						}
+						if (board->rgrid[(int)nloc.x][(int)nloc.y] == SQR_VOID) continue;
+						local_queue[local_queue_pos++] = nloc;
+					}
+				}
+			}
+		}
+
+		//unchecked = local_queue;
+		for (int i = 0; i < local_queue_pos; i++) unchecked[i] = local_queue[i];
+		queue_pos = local_queue_pos;
+	}
+}
+
+//When they left click on a number
+void NumberReveal(struct Board *board, int x, int y) {
+	int numeric = -1;
+	if (board->rgrid[x][y] == SQR_VOID) numeric = (int)board->grid[x][y];
+	if (numeric < 0) return;
+
+	int flag_count = 0;
+	for (int i = 0; i < 8; i++) {
+		Vector2 nloc = {x - kernel[i].x, y - kernel[i].y};
+		if (nloc.x < 0 || nloc.x >= board->square || nloc.y < 0 || nloc.y >= board->square) continue; //no existo
+
+		if (board->rgrid[(int)nloc.x][(int)nloc.y] == SQR_FLAG) {
+			flag_count += 1;
+		}
+	}
+
+	if (flag_count >= numeric) { //supposedly we are chillin
+		for (int i = 0; i < 8; i++) {
+			Vector2 nloc = {x - kernel[i].x, y - kernel[i].y};
+			if (nloc.x < 0 || nloc.x >= board->square || nloc.y < 0 || nloc.y >= board->square) continue; //no existo
+
+			if (board->rgrid[(int)nloc.x][(int)nloc.y] == SQR_UNREVEALED) {}
 		}
 	}
 }
@@ -166,13 +264,22 @@ void BoardInteract(struct Board *board) {
 		//LOG("%d, %d\n", sx, sy);
 
 		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-			if (board->rgrid[sx][sy] != SQR_FLAG) {
-				board->rgrid[sx][sy] = SQR_VOID;
 
-				if (board->grid[sx][sy] == SQR_MINE) {
+			if (board->rgrid[sx][sy] != SQR_FLAG) {
+
+				if (board->grid[sx][sy] == SQR_MINE) { //Oops
 					board->state = ST_FAILED;
+					for (int x = 0; x < BOARD_MAX; x++)
+						for (int y = 0; y < BOARD_MAX; y++)
+							board->rgrid[x][y] = SQR_VOID; //reveal everything
+				} else if (board->grid[sx][sy] == SQR_EMPTY) { //Reveal section
+					CascadeReveal(board, sx, sy);
+				} else if (board->rgrid[sx][sy] == SQR_VOID && board->grid != SQR_EMPTY) { //QoL
+					FlagReveal(board, sx, sy);
+				} else { //twas a numba
+					board->rgrid[sx][sy] = SQR_VOID;
 				}
-			}
+			} else FlagReveal(board, sx, sy);
 		}
 
 		if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
