@@ -7,7 +7,7 @@
 #include "board.h"
 #include "interface.h"
 
-enum GME_DFC difficulty = DFC_HARD;
+enum GME_DFC difficulty = DFC_EASY;
 struct Board board = {0};
 
 int main(int argc, char **argv) {

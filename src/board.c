@@ -20,6 +20,31 @@ Vector2 kernel[8] = {
 	{ 0,  1}  //str-down
 };
 
+void BoardReveal(struct Board *board) {
+	for (int x = 0; x < BOARD_MAX; x++)
+		for (int y = 0; y < BOARD_MAX; y++)
+			board->rgrid[x][y] = SQR_VOID; //reveal everything
+}
+
+void BoardFail(struct Board *board) {
+	board->state = ST_FAILED;
+	BoardReveal(board);
+}
+
+void BoardCheckClear(struct Board *board) {
+	if (board->state != ST_RUNNING) return;
+
+	for (int x = 0; x < board->square; x++) {
+		for (int y = 0; y < board->square; y++) {
+			if ((board->rgrid[x][y] == SQR_UNREVEALED || board->rgrid[x][y] == SQR_FLAG)
+					&& board->grid[x][y] != SQR_MINE) return; //haven't fully revealed the board
+		}
+	}
+
+	board->state = ST_CLEAR;
+	BoardReveal(board);
+}
+
 void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt) {
 	board->square = square;
 	board->state = ST_RUNNING;
@@ -38,7 +63,7 @@ void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt) {
 		}
 	}
 
-	//Place Mines, and Add Numbers
+	//Place Mines, and Increment Numbers Around
 	for (int i = 0; i < mine_cnt; i++) {
 		int x = GetRandomValue(0, square-1);
 		int y = GetRandomValue(0, square-1);
@@ -64,6 +89,9 @@ void SquareDraw(struct Board *board, enum SQR_TYP type, uint16_t px, uint16_t py
 	Color unrevealed = {192, 192, 192, 255};
 	Color revealed = {75, 75, 75, 255};
 	uint16_t txt_sz = (sz+border-2);
+	uint16_t icon_sz = ((sz-border) > 32) ? 2 : 1;
+	uint16_t empty_space = (sz-border) - 16*icon_sz; //for icons
+
 
 	DrawRectangle(px, py, sz+border, sz+border, BLACK);
 	switch (type) {
@@ -77,7 +105,7 @@ void SquareDraw(struct Board *board, enum SQR_TYP type, uint16_t px, uint16_t py
 
 		case SQR_I:
 			DrawRectangle(px+border, py+border, sz-border, sz-border, revealed);
-			DrawText("1", px+border+txt_sz/4, py+border, txt_sz, DARKBLUE);
+			DrawText("1", px+border+txt_sz/4, py+border, txt_sz, BLUE);
 			break;
 
 		case SQR_II:
@@ -119,7 +147,7 @@ void SquareDraw(struct Board *board, enum SQR_TYP type, uint16_t px, uint16_t py
 			Color toUse = (board->state == ST_FAILED) ? exploded : GREEN;
 
 			DrawRectangle(px+border, py+border, sz-border, sz-border, toUse);
-			GuiDrawIcon(ICON_GEAR, px+border, py+border, (sz-border)/16, BLACK);
+			GuiDrawIcon(ICON_GEAR, px+border+(empty_space/2), py+border+(empty_space/2), icon_sz, BLACK);
 			break;
 
 		case SQR_UNREVEALED:
@@ -128,7 +156,7 @@ void SquareDraw(struct Board *board, enum SQR_TYP type, uint16_t px, uint16_t py
 
 		case SQR_FLAG: //only used in the revealed grid
 			DrawRectangle(px+border, py+border, sz-border, sz-border, unrevealed);
-			GuiDrawIcon(ICON_CRACK, px+border, py+border, (sz-border)/16, BLACK);
+			GuiDrawIcon(ICON_CROSS, px+border+(empty_space/2), py+border+(empty_space/2), icon_sz, BLACK);
 			break;
 
 		default:
@@ -247,12 +275,18 @@ void NumberReveal(struct Board *board, int x, int y) {
 			Vector2 nloc = {x - kernel[i].x, y - kernel[i].y};
 			if (nloc.x < 0 || nloc.x >= board->square || nloc.y < 0 || nloc.y >= board->square) continue; //no existo
 
-			if (board->rgrid[(int)nloc.x][(int)nloc.y] == SQR_UNREVEALED) {}
+			int nlx = (int)nloc.x;
+			int nly = (int)nloc.y;
+			if (board->rgrid[nlx][nly] == SQR_UNREVEALED) {
+				if (board->grid[nlx][nly] != SQR_MINE) CascadeReveal(board, nlx, nly);
+				else BoardFail(board);
+			}
 		}
 	}
 }
 
 void BoardInteract(struct Board *board) {
+	if (board->state != ST_RUNNING) return;
 	uint16_t square_size = (board_size) / ((float)board->square);
 	uint16_t mx = GetMouseX();
 	uint16_t my = GetMouseY();
@@ -268,25 +302,25 @@ void BoardInteract(struct Board *board) {
 			if (board->rgrid[sx][sy] != SQR_FLAG) {
 
 				if (board->grid[sx][sy] == SQR_MINE) { //Oops
-					board->state = ST_FAILED;
-					for (int x = 0; x < BOARD_MAX; x++)
-						for (int y = 0; y < BOARD_MAX; y++)
-							board->rgrid[x][y] = SQR_VOID; //reveal everything
+					BoardFail(board);
 				} else if (board->grid[sx][sy] == SQR_EMPTY) { //Reveal section
 					CascadeReveal(board, sx, sy);
-				} else if (board->rgrid[sx][sy] == SQR_VOID && board->grid != SQR_EMPTY) { //QoL
-					FlagReveal(board, sx, sy);
-				} else { //twas a numba
+				} else if (board->rgrid[sx][sy] == SQR_VOID && board->grid[sx][sy] != SQR_EMPTY) { //QoL
+					NumberReveal(board, sx, sy);
+				} else { //twas an unrevealed numba
 					board->rgrid[sx][sy] = SQR_VOID;
 				}
-			} else FlagReveal(board, sx, sy);
+			}
+			BoardCheckClear(board);
 		}
 
 		if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
 			if (board->rgrid[sx][sy] == SQR_FLAG) {
 				board->rgrid[sx][sy] = SQR_UNREVEALED;
+				board->flags -= 1;
 			} else if (board->rgrid[sx][sy] == SQR_UNREVEALED) {
 				board->rgrid[sx][sy] = SQR_FLAG;
+				board->flags += 1;
 			}
 		}
 	}

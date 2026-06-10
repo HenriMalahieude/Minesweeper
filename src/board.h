@@ -47,16 +47,16 @@ struct Board {
 };
 
 static const uint16_t DifficultyMines[DFC_AM] = {
-	[DFC_EASY] = 10,  //~10%
-	[DFC_MEDI] = 50,  //~25%
-	[DFC_HARD] = 100, //~40%
-	[DFC_IMPO] = 500  //~60%
+	[DFC_EASY] = 10,	// 10%
+	[DFC_MEDI] = 29,	// 20%
+	[DFC_HARD] = 100,	// 25%
+	[DFC_IMPO] = 250 	// 40%
 };
 
 static const uint16_t DifficultySquare[DFC_AM] = {
 	[DFC_EASY] = 10,
 	[DFC_MEDI] = 12,
-	[DFC_HARD] = 25,
+	[DFC_HARD] = 20,
 	[DFC_IMPO] = 25
 };
 
