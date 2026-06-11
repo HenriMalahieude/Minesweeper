@@ -1,14 +1,16 @@
 CC = gcc
+WEB_CC = emcc
 
 RAYLIB_DIR ?= ~/Desktop/raylib/src
 RAYGUI_DIR ?= ~/Desktop/raygui/src
 
 WRN = -Wall
-BASE_FLAGS = $(WRN) -I $(RAYLIB_DIR) -I $(RAYGUI_DIR)
+BASE_FLAGS = $(WRN) -I $(RAYLIB_DIR) -I $(RAYGUI_DIR) -std=c23
 TEST_FLAGS = -Og -g $(BASE_FLAGS) -L ./lib/ -lraylib -lGL -lm -lpthread -ldl -lX11
-WEB_FLAGS = -O2 $(BASE_FLAGS) -L ./web_lib/ -lraylib
+WEB_FLAGS = -O3 $(BASE_FLAGS) -L ./web_lib/ -lraylib -s USE_GLFW=3 -DPLATFORM_WEB
 
 SRC_DIR ?= ../src
+WEB_OUT_DIR ?= ../docs
 
 SRCS = $(wildcard $(SRC_DIR)/*.c)
 HDRS = $(wildcard $(SRC_DIR)/*.h)
@@ -18,14 +20,18 @@ OBJS = $(foreach t, $(SRCS), $(basename $(notdir $t)).o)
 .SECONDARY:
 
 minesweeper: $(OBJS)
-	gcc -o $@ $(OBJS) $(TEST_FLAGS)
+	$(CC) -o $@ $(OBJS) $(TEST_FLAGS)
 
-web:
-	$(info TODO)
+web: $(WEB_OUT_DIR) clean
+	$(WEB_CC) $(SRCS) -o $(WEB_OUT_DIR)/index.html $(WEB_FLAGS)
 
 %.o: $(SRC_DIR)/%.c $(HDRS)
-	gcc -c $< $(TEST_FLAGS)
+	$(CC) -c $< $(TEST_FLAGS)
+
+$(WEB_OUT_DIR):
+	mkdir -p $@
 
 clean:
+	rm $(WEB_OUT_DIR) 2> /dev/null | true
 	rm *.o 2> /dev/null | true
 	rm minesweeper 2> /dev/null | true

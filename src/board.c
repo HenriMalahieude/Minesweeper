@@ -46,8 +46,9 @@ void BoardCheckClear(struct Board *board) {
 }
 
 void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt) {
-	board->square = square;
 	board->state = ST_RUNNING;
+	board->square = square;
+	board->flags = 0;
 
 	//Reset
 	for (size_t x = 0; x < BOARD_MAX; x++) {
@@ -297,8 +298,7 @@ void BoardInteract(struct Board *board) {
 		int sy = ((my-margin) / square_size); sy = min(sy, board->square-1);
 		//LOG("%d, %d\n", sx, sy);
 
-		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			if (board->rgrid[sx][sy] != SQR_FLAG) {
 
 				if (board->grid[sx][sy] == SQR_MINE) { //Oops
@@ -314,7 +314,7 @@ void BoardInteract(struct Board *board) {
 			BoardCheckClear(board);
 		}
 
-		if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+		if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
 			if (board->rgrid[sx][sy] == SQR_FLAG) {
 				board->rgrid[sx][sy] = SQR_UNREVEALED;
 				board->flags -= 1;

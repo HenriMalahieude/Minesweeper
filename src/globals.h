@@ -8,6 +8,11 @@
 static const uint16_t win_width = 720;
 static const uint16_t win_heigh = 720;
 static const uint16_t target_fps = 60;
+static const uint16_t font_size = 12;
+
+extern enum GME_DFC difficulty;
+extern struct Board board;
+extern bool reload;
 
 #define LOG(fmt, ...) { \
 	printf("[%s:%s]> ", __FILE__, __func__); \
