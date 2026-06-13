@@ -57,6 +57,87 @@ void InterfaceDraw() {
 	else if (difficulty == DFC_HARD) dfc_txt = "Hard";
 	DrawText(dfc_txt, icon_pad, icon_pad, font_size*2, info_col);
 
+	//Global Options
+	Rectangle heat_btn = {win_width - button_sz - icon_pad, win_heigh - button_sz - icon_pad, button_sz, button_sz};
+	bool heat_see = GuiButton(heat_btn, "");
+	int heat_icon = (heat != HT_NONE) ? ICON_EYE_ON : ICON_EYE_OFF;
+	GuiDrawIcon(heat_icon, heat_btn.x+icon_pad, heat_btn.y+icon_pad, icon_sz, BLACK);
+
+	if (heat_see) {
+		//LOG("HEAT_SEE\n");
+		if (heat == HT_NONE) {heat = HT_MAXIMUM; BoardHeatCalculate(&board); }
+		else				 heat = HT_NONE;
+	}
+
+	if (heat != HT_NONE) {
+		heat_btn.x -= button_sz + icon_sz;
+		bool heat_type_change = GuiButton(heat_btn, "");
+		heat_icon = (heat != HT_ADDITIVE) ? ICON_BREAKPOINT_ON : ICON_BREAKPOINT_OFF;
+		GuiDrawIcon(heat_icon, heat_btn.x+icon_pad, heat_btn.y+icon_pad, icon_sz, BLACK);
+
+		if (heat_type_change) {
+			if (heat == HT_ADDITIVE) heat = HT_MAXIMUM;
+			else					 heat = HT_ADDITIVE;
+
+			BoardHeatCalculate(&board);
+		}
+	}
+}
+
+static const unsigned int flag_icon[8] = {
+	0x00C00000,
+	0x01B001E0,
+	0x018C0198,
+	0x018001FC,
+	0x01800180,
+	0x01800180,
+	0x1FF80180,
+	0x00003FFC,
+};
+
+static const unsigned int plus_icon[8] = {
+	0x00000000,
+	0x03C003C0,
+	0x03C003C0,
+
+	0x3FFC3FFC,
+
+	0x3FFC3FFC,
+
+	0x03C003C0,
+	0x03C003C0,
+	0x00000000,
+};
+
+static const unsigned int lt_icon[8] = {
+	0x0E001C00,
+	0x03800700,
+	0x00E001C0,
+	0x00380070,
+
+	0x00700038,
+	0x01C000E0,
+	0x07000380,
+	0x1C000E00,
+};
+
+void IconInit() {
+	unsigned int *icons = GuiGetIcons();
+
+	//Flag
+	int offset = ICON_CROSS * 8;
+	for (int i = 0; i < 8; i++)
+		icons[offset + i] = flag_icon[i];
+
+	//Plus
+	offset = ICON_BREAKPOINT_OFF * 8;
+	for (int i = 0; i < 8; i++)
+		icons[offset+i] = plus_icon[i];
+
+	//Less Than
+	offset = ICON_BREAKPOINT_ON * 8;
+	for (int i = 0; i < 8; i++)
+		icons[offset+i] = lt_icon[i];
 }
 
 /*

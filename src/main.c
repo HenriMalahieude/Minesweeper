@@ -11,6 +11,7 @@
 	#include <emscripten/emscripten.h>
 #endif
 
+enum HEAT_TYP heat = HT_NONE;
 enum GME_DFC difficulty = DFC_EASY;
 struct Board board = {0};
 bool reload = true;
@@ -30,6 +31,7 @@ int main(int argc, char **argv) {
 	InitWindow(win_heigh, win_width, "Minesweeper");
 	SetTargetFPS(target_fps);
 
+	IconInit();
 	GuiSetStyle(DEFAULT, TEXT_SIZE, font_size);
 	GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, ColorToInt(BLACK));
 	GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED, ColorToInt(GRAY));

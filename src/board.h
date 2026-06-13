@@ -37,10 +37,19 @@ enum BRD_ST {
 	ST_CLEAR 	= 2
 };
 
+enum HEAT_TYP {
+	HT_NONE = 0,
+	HT_MAXIMUM = 1,
+	HT_ADDITIVE = 2
+};
+
 struct Board {
 	//-1 = non-revealed, 0 = empty, 1-8 = number square, 9 = mine
 	enum SQR_TYP  grid[BOARD_MAX][BOARD_MAX];
 	enum SQR_TYP rgrid[BOARD_MAX][BOARD_MAX]; //grid of revealed squares
+
+	uint8_t		 hgrid[BOARD_MAX][BOARD_MAX]; //grid of heat on unrevealed squares
+
 	enum BRD_ST state;
 	uint16_t square;
 	uint16_t flags;
@@ -60,7 +69,7 @@ static const uint16_t DifficultySquare[DFC_AM] = {
 	[DFC_IMPO] = 25
 };
 
-//The Board, length of one side, amount of mines to spawn
+void BoardHeatCalculate(struct Board *board);
 void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt);
 void BoardDraw(struct Board *board, float frametime, bool intro_sgn);
 void BoardInteract(struct Board *board);

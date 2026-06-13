@@ -10,6 +10,7 @@ static const uint16_t win_heigh = 720;
 static const uint16_t target_fps = 60;
 static const uint16_t font_size = 12;
 
+extern enum HEAT_TYP heat;
 extern enum GME_DFC difficulty;
 extern struct Board board;
 extern bool reload;

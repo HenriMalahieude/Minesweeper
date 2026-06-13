@@ -23,6 +23,7 @@ minesweeper: $(OBJS)
 	$(CC) -o $@ $(OBJS) $(TEST_FLAGS)
 
 web: $(WEB_OUT_DIR) clean
+	rm $(WEB_OUT_DIR) 2> /dev/null | true
 	$(WEB_CC) $(SRCS) -o $(WEB_OUT_DIR)/index.html $(WEB_FLAGS)
 
 %.o: $(SRC_DIR)/%.c $(HDRS)
@@ -32,6 +33,5 @@ $(WEB_OUT_DIR):
 	mkdir -p $@
 
 clean:
-	rm $(WEB_OUT_DIR) 2> /dev/null | true
 	rm *.o 2> /dev/null | true
 	rm minesweeper 2> /dev/null | true

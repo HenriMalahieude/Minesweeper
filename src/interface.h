@@ -6,5 +6,6 @@
 void InterfaceDraw();
 
 //void InterfaceInteract(int mx, int my);
+void IconInit();
 
 #endif

@@ -61,6 +61,7 @@ void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt) {
 
 			board->grid[x][y] = SQR_EMPTY;
 			board->rgrid[x][y] = SQR_UNREVEALED;
+			board->hgrid[x][y] = 0;
 		}
 	}
 
@@ -85,7 +86,102 @@ void BoardGenerate(struct Board *board, uint16_t square, uint16_t mine_cnt) {
 	}
 }
 
-void SquareDraw(struct Board *board, enum SQR_TYP type, uint16_t px, uint16_t py, uint16_t sz) {
+//Recalculate Heat/Probabilities of a mine per square
+void BoardHeatCalculate(struct Board *board) {
+	//Reset everything
+	for (int x = 0; x < board->square; x++)
+		for (int y = 0; y < board->square; y++)
+			board->hgrid[x][y] = 0;
+
+	if (board->state != ST_RUNNING || heat == HT_NONE) return;
+
+	//Calculate 100% squares
+	for (int x = 0; x < board->square; x++) {
+		for (int y = 0; y < board->square; y++) {
+			enum SQR_TYP rtyp = board->rgrid[x][y];
+			if (rtyp == SQR_UNREVEALED || rtyp == SQR_FLAG) continue;
+
+			int8_t mine_cnt = (int8_t)board->grid[x][y]; //amount of mines around
+			if (mine_cnt <= 0 || mine_cnt >= 9) continue;
+
+			//How many unrevealed possibilities
+			Vector2 apply[8] = {};
+			int unknown_cnt = 0;
+			for (int i = 0; i < 8; i++) {
+				Vector2 nloc = {x + kernel[i].x, y + kernel[i].y};
+				if (nloc.x >= 0 && nloc.x < board->square && nloc.y >= 0 && nloc.y < board->square) {
+					if (board->rgrid[(int)nloc.x][(int)nloc.y] == SQR_UNREVEALED)
+						apply[unknown_cnt++] = nloc;
+
+					if (board->rgrid[(int)nloc.x][(int)nloc.y] == SQR_FLAG)
+						mine_cnt -= 1;
+				}
+			}
+
+			if (unknown_cnt > mine_cnt) continue;
+
+			//Apply the certainty
+			for (int i = 0; i < unknown_cnt; i++) {
+				Vector2 nloc = apply[i];
+				uint8_t *sqr = &board->hgrid[(int)nloc.x][(int)nloc.y];
+
+				*sqr = 100;
+			}
+		}
+	}
+
+	//Calculate and apply probabilities
+	for (int x = 0; x < board->square; x++) {
+		for (int y = 0; y < board->square; y++) {
+			enum SQR_TYP rtyp = board->rgrid[x][y];
+			if (rtyp == SQR_UNREVEALED || rtyp == SQR_FLAG) continue;
+
+			int8_t mine_cnt = (int8_t)board->grid[x][y]; //amount of mines around
+			if (mine_cnt <= 0 || mine_cnt >= 9) continue;
+
+			//How many unrevealed possibilities
+			Vector2 apply[8] = {};
+			int unknown_cnt = 0;
+			int certain_cnt = 0; //amount of squares marked as certainly a mine
+			for (int i = 0; i < 8; i++) {
+				Vector2 nloc = {x + kernel[i].x, y + kernel[i].y};
+				if (nloc.x >= 0 && nloc.x < board->square && nloc.y >= 0 && nloc.y < board->square) {
+					if (board->rgrid[(int)nloc.x][(int)nloc.y] == SQR_UNREVEALED)
+						apply[unknown_cnt++] = nloc; //more unknown
+
+					if (board->rgrid[(int)nloc.x][(int)nloc.y] == SQR_FLAG)
+						mine_cnt -= 1; //one less mine prob
+
+					if (board->hgrid[(int)nloc.x][(int)nloc.y] == 100) {
+						certain_cnt += 1;
+					}
+				}
+			}
+
+			if (certain_cnt >= mine_cnt) continue; //our heat overlaps with enough other certain locations
+			//LOG("(%d, %d): unknown %d, mine %d, certain %d, prob %d%%\n", x, y, unknown_cnt, mine_cnt, certain_cnt, (int)((mine_cnt / (float)unknown_cnt)*100));
+
+			//Apply the heat
+			for (int i = 0; i < unknown_cnt; i++) {
+				Vector2 nloc = apply[i];
+				uint8_t *sqr = &board->hgrid[(int)nloc.x][(int)nloc.y];
+				if (*sqr >= 100) continue; //don't change certains
+
+				uint8_t prob = (((float)mine_cnt / unknown_cnt) * 100);
+				prob = min(prob, 99);
+
+				if (*sqr < 99) {
+					if (*sqr < prob && heat == HT_MAXIMUM) *sqr = prob;
+					else if (heat == HT_ADDITIVE) *sqr += prob;
+				}
+
+				*sqr = min(*sqr, 99); //otherwise, limit to high likelihood
+			}
+		}
+	}
+}
+
+void SquareDraw(struct Board *board, enum SQR_TYP type, uint8_t prob, uint16_t px, uint16_t py, uint16_t sz) {
 	Color exploded = {255, 0, 0, 255};
 	Color unrevealed = {192, 192, 192, 255};
 	Color revealed = {75, 75, 75, 255};
@@ -152,7 +248,17 @@ void SquareDraw(struct Board *board, enum SQR_TYP type, uint16_t px, uint16_t py
 			break;
 
 		case SQR_UNREVEALED:
-			DrawRectangle(px+border, py+border, sz-border, sz-border, unrevealed);
+			if (heat != HT_NONE && prob > 0) {
+				Color hotness = unrevealed;
+				hotness.r = (unrevealed.r) + ((prob / 100.f) * (exploded.r - unrevealed.r));
+				hotness.g = (unrevealed.g) + ((prob / 100.f) * (exploded.g - unrevealed.g));
+				hotness.b = (unrevealed.b) + ((prob / 100.f) * (exploded.b - unrevealed.b));
+
+				DrawRectangle(px+border, py+border, sz-border, sz-border, hotness);
+				char nmbr[5]; snprintf(nmbr, 5, "%d%%", prob);
+				int txt_len = MeasureText(nmbr, font_size);
+				DrawText(nmbr, px+border+(empty_space/2), py+border+empty_space/2, (txt_len < (sz-border*2)) ? font_size : font_size/4, BLACK);
+			} else DrawRectangle(px+border, py+border, sz-border, sz-border, unrevealed);
 			break;
 
 		case SQR_FLAG: //only used in the revealed grid
@@ -192,7 +298,7 @@ void BoardDraw(struct Board *board, float frametime, bool intro_sgn) {
 					uint16_t rx = x * (square_size) + margin;
 					uint16_t ry = y * (square_size) + margin;
 
-					SquareDraw(board, SQR_UNREVEALED, rx, ry, square_size); //the square
+					SquareDraw(board, SQR_UNREVEALED, 0, rx, ry, square_size); //the square
 				}
 			}
 		}
@@ -210,7 +316,7 @@ void BoardDraw(struct Board *board, float frametime, bool intro_sgn) {
 			//if (type != SQR_UNREVEALED) LOG_ONCE("Bruh? %d %d\n", x, y);
 			if (type == SQR_VOID) type = board->grid[x][y];
 
-			SquareDraw(board, type, rx, ry, square_size);
+			SquareDraw(board, type, board->hgrid[x][y], rx, ry, square_size);
 		}
 	}
 }
@@ -312,6 +418,7 @@ void BoardInteract(struct Board *board) {
 				}
 			}
 			BoardCheckClear(board);
+			BoardHeatCalculate(board);
 		}
 
 		if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
@@ -322,6 +429,7 @@ void BoardInteract(struct Board *board) {
 				board->rgrid[sx][sy] = SQR_FLAG;
 				board->flags += 1;
 			}
+			BoardHeatCalculate(board);
 		}
 	}
 }
